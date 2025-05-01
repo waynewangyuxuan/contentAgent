@@ -1,27 +1,24 @@
 # agent/protocol/local/generator.py
 
 import os
-from openai import OpenAI
+from openai import AsyncOpenAI
+from agent.model.persona import PersonaManager
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+persona_manager = PersonaManager()
 
-def generate_tweet(topic: str, persona: str = "classical_critic") -> str:
-    persona_prompts = {
-        "classical_critic": (
-            "You are a witty and insightful classical music critic. "
-            "You write tweet-style commentaries that are brief, poetic, emotionally aware, and rich in musical or historical insight. "
-            "Stay within 280 characters. Avoid emojis."
-        ),
-        "funny_musician": (
-            "You're a sarcastic but educated classical musician who likes to tweet weird but deep takes on classical music. "
-            "Keep it short and witty. Throw in musical jargon if necessary."
-        )
-    }
-
-    system_prompt = persona_prompts.get(persona, "")
+async def generate_tweet(topic: str, persona: str = "classical_critic") -> dict:
+    """Generate a tweet about a given topic using the specified persona."""
+    # Get the persona configuration
+    persona_obj = persona_manager.get_persona(persona)
+    if not persona_obj:
+        raise ValueError(f"Persona '{persona}' not found")
+    
+    # Get the system prompt from the persona
+    system_prompt = persona_obj.get_system_prompt()
     user_prompt = f"Write a tweet about: {topic}"
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model="gpt-4.1-nano",
         messages=[
             {"role": "system", "content": system_prompt},
@@ -31,4 +28,8 @@ def generate_tweet(topic: str, persona: str = "classical_critic") -> str:
         max_tokens=100
     )
 
-    return response.choices[0].message.content.strip()
+    content = response.choices[0].message.content.strip()
+    return {
+        "content": content,
+        "store_in_memory": True  # Always store tweets in memory
+    }

@@ -1,7 +1,8 @@
 import os
-import requests
+import aiohttp
+from typing import List, Dict
 
-def search_with_serpapi(query: str, max_results: int = 3) -> list[dict]:
+async def search_with_serpapi(query: str, max_results: int = 3) -> List[Dict]:
     """
     Search Google via SerpAPI and return summarized structured results.
     """
@@ -18,19 +19,20 @@ def search_with_serpapi(query: str, max_results: int = 3) -> list[dict]:
 
     url = "https://serpapi.com/search"
     try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        results = data.get("organic_results", [])
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, timeout=10) as response:
+                response.raise_for_status()
+                data = await response.json()
+                results = data.get("organic_results", [])
 
-        return [
-            {
-                "title": r.get("title"),
-                "snippet": r.get("snippet"),
-                "link": r.get("link")
-            }
-            for r in results[:max_results]
-        ]
+                return [
+                    {
+                        "title": r.get("title"),
+                        "snippet": r.get("snippet"),
+                        "link": r.get("link")
+                    }
+                    for r in results[:max_results]
+                ]
     except Exception as e:
         print(f"[search_with_serpapi] Search failed: {e}")
         return []
