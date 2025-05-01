@@ -28,6 +28,10 @@ class Planner:
             system_message = """You are an autonomous content agent that can write high-quality content.
 You have access to the following tools:
 1. search: Search the web using SerpAPI and return structured results
+   - Parameters:
+     - query: The search query string
+     - max_results: Number of results to return (default: 3)
+     - engine: Search engine to use (must be lowercase, e.g., "google", "bing")
 2. generate_tweet: Generate a tweet about a given topic with a specific persona
 
 Given a task and context, decide which tool to use and what parameters to pass.
@@ -35,7 +39,8 @@ Return a JSON object with:
 - tool_name: name of the tool to use
 - parameters: dict of parameters for the tool
 - reasoning: brief explanation of your choice
-"""
+
+IMPORTANT: The 'engine' parameter for the search tool MUST be lowercase (e.g., "google", "bing")."""
             
             logger.info(f"Planning task: {task}")
             logger.info(f"Context: {context}")

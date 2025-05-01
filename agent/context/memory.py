@@ -6,9 +6,21 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 import chromadb
 from chromadb.config import Settings
+from datetime import datetime
 
 class Memory:
+    _instance = None
+    
+    def __new__(cls, persist_directory: str = "data/chroma"):
+        if cls._instance is None:
+            cls._instance = super(Memory, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+    
     def __init__(self, persist_directory: str = "data/chroma"):
+        if self._initialized:
+            return
+            
         self.persist_directory = Path(persist_directory)
         self.persist_directory.mkdir(parents=True, exist_ok=True)
         
@@ -21,8 +33,62 @@ class Memory:
         self.content_collection = self.client.get_or_create_collection("content")
         self.facts_collection = self.client.get_or_create_collection("facts")
         
+        self._initialized = True
+        
+    def generate_metadata(
+        self,
+        source: str,
+        content_type: str,
+        title: Optional[str] = None,
+        url: Optional[str] = None,
+        task: Optional[str] = None,
+        tool: Optional[str] = None,
+        additional_metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate standardized metadata for content storage.
+        
+        Args:
+            source: Where the content came from (e.g., "web_fetch", "tweet", "search")
+            content_type: Type of content (e.g., "article", "tweet", "fact")
+            title: Title of the content (if applicable)
+            url: Source URL (if applicable)
+            task: Task that generated this content
+            tool: Tool that generated this content
+            additional_metadata: Any additional metadata fields
+            
+        Returns:
+            Dictionary with standardized metadata structure
+        """
+        metadata = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "source": source,
+            "content_type": content_type,
+            "version": "1.0"  # Metadata schema version
+        }
+        
+        # Add optional fields if provided
+        if title:
+            metadata["title"] = title
+        if url:
+            metadata["url"] = url
+        if task:
+            metadata["task"] = task
+        if tool:
+            metadata["tool"] = tool
+            
+        # Merge any additional metadata
+        if additional_metadata:
+            metadata.update(additional_metadata)
+            
+        return metadata
+        
     def store_content(self, content: str, metadata: Dict[str, Any]) -> None:
         """Store content with associated metadata."""
+        # Ensure metadata has required fields
+        if "source" not in metadata or "content_type" not in metadata:
+            raise ValueError("Metadata must include 'source' and 'content_type' fields")
+            
         self.content_collection.add(
             documents=[content],
             metadatas=[metadata],
@@ -31,9 +97,14 @@ class Memory:
         
     def store_fact(self, fact: str, source: str, topic: str) -> None:
         """Store a fact with its source and topic."""
+        metadata = self.generate_metadata(
+            source=source,
+            content_type="fact",
+            title=topic
+        )
         self.facts_collection.add(
             documents=[fact],
-            metadatas=[{"source": source, "topic": topic}],
+            metadatas=[metadata],
             ids=[f"fact_{len(self.facts_collection.get()['ids'])}"]
         )
         

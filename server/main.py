@@ -50,10 +50,20 @@ class AgentServer:
             
             # 4. Store relevant information in memory
             if result.get("store_in_memory", False):
-                self.memory.store_content(
-                    content=result["content"],
-                    metadata={"task": task, "tool": plan["tool_name"]}
-                )
+                # Handle different result structures
+                content_to_store = None
+                if "content" in result:  # Old structure
+                    content_to_store = result["content"]
+                elif "results" in result:  # New search structure
+                    content_to_store = result["results"]
+                elif "content" in result.get("metadata", {}):  # Generator structure
+                    content_to_store = result["content"]
+                
+                if content_to_store:
+                    self.memory.store_content(
+                        content=str(content_to_store),
+                        metadata=result.get("metadata", {})
+                    )
             
             return {
                 "plan": plan,
