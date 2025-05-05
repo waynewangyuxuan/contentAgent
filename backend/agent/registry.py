@@ -2,6 +2,7 @@ from typing import Dict, Any, Callable, Coroutine
 from .protocol.local.generator import generate_tweet
 from .protocol.local.search import search_with_serpapi
 from .protocol.local.content_fetcher import fetch_full_contents
+from .protocol.local.twitter import post_tweet
 import inspect
 import importlib
 from .protocol.local import search
@@ -47,6 +48,13 @@ class ToolRegistry:
             "generate_tweet",
             generate_tweet,
             "Generate a tweet about a given topic with a specific persona based on past content or potential new content"
+        )
+        
+        # Register Twitter posting tool
+        self.register(
+            "post_tweet",
+            post_tweet,
+            "Post a tweet with the given text content"
         )
         
     def register(self, name: str, func: Callable, description: str):
